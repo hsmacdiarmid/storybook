@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Storybook Adventures</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f5efe0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Storybook">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --paper:      #f9f3e8;
+  --paper-dark: #ede3cc;
+  --ink:        #1c1208;
+  --ink-light:  #4a3820;
+  --faded:      #8c7a60;
+  --gold:       #8a6a20;
+  --gold-light: #c8a040;
+  --red:        #8b2020;
+  --spine:      #5c3010;
+}
+
+/* ══════════════════════════════
+   BASE — full-page book feel
+══════════════════════════════ */
+html, body {
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Libre Baskerville', Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100%;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Paper texture overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0;
+}
+
+/* ══════════════════════════════
+   BOOK SHELL — centred column
+   with visible spine on left
+══════════════════════════════ */
+.book-shell {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+
+  /* Left spine shadow */
+  box-shadow:
+    -8px 0 0 var(--spine),
+    -11px 0 0 #3a1a06,
+    -14px 0 18px rgba(0,0,0,0.45),
+    8px 0 30px rgba(0,0,0,0.12);
+
+  background: var(--paper);
+  border-right: 1px solid var(--paper-dark);
+}
+
+/* Top decorative border */
+.book-shell::before {
+  content: '';
+  display: block;
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--gold) 0px, var(--gold) 8px,
+    var(--paper-dark) 8px, var(--paper-dark) 10px
+  );
+  flex-shrink: 0;
+}
+
+/* Bottom decorative border */
+.book-shell::after {
+  content: '';
+  display: block;
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--gold) 0px, var(--gold) 8px,
+    var(--paper-dark) 8px, var(--paper-dark) 10px
+  );
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+/* ══════════════════════════════
+   SCREENS  (swap visibility)
+══════════════════════════════ */
+.screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  padding: 0 28px 32px;
+}
+.screen.active { display: flex; }
+
+/* ══════════════════════════════
+   THEME SELECTION SCREEN
+══════════════════════════════ */
+#screen-themes {
+  align-items: center;
+  text-align: center;
+  padding-top: 0;
+}
+
+.themes-header {
+  width: 100%;
+  padding: 32px 0 24px;
+  border-bottom: 1px solid var(--paper-dark);
+  margin-bottom: 32px;
+}
+
+.themes-header-rule {
+  display: flex; align-items: center; gap: 12px;
+  justify-content: center; margin-bottom: 16px;
+}
+.themes-header-rule::before,
+.themes-header-rule::after {
+  content: ''; flex: 1; max-width: 60px;
+  height: 1px; background: var(--gold); opacity: 0.5;
+}
+
+.themes-series {
+  font-family: 'IM Fell English', serif;
+  font-size: 0.7rem; letter-spacing: 0.2em;
+  color: var(--gold); text-transform: uppercase;
+}
+
+.themes-main-title {
+  font-family: 'IM Fell English', serif;
+  font-size: clamp(2rem, 8vw, 2.8rem);
+  color: var(--ink);
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.themes-subtitle {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--faded);
+  line-height: 1.6;
+}
+
+.choose-prompt {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--ink-light);
+  margin-bottom: 20px;
+}
+
+.theme-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.theme-btn {
+  width: 100%;
+  padding: 18px 22px;
+  background: white;
+  border: 1px solid var(--paper-dark);
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: left;
+  display: flex; align-items: center; gap: 16px;
+  transition: all 0.18s;
+  position: relative;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 2px 2px 0 var(--paper-dark);
+}
+
+.theme-btn:hover {
+  border-color: var(--gold);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1), 2px 2px 0 var(--gold-light);
+  transform: translateY(-1px);
+}
+.theme-btn:active { transform: scale(0.99) translateY(0); }
+
+.theme-btn-emoji { font-size: 2.2rem; flex-shrink: 0; line-height: 1; }
+
+.theme-btn-text { flex: 1; }
+.theme-btn-title {
+  font-family: 'IM Fell English', serif;
+  font-size: 1.15rem; color: var(--ink);
+  margin-bottom: 2px;
+}
+.theme-btn-sub {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic; font-size: 0.72rem; color: var(--faded);
+}
+
+.theme-btn-arrow {
+  font-size: 1.1rem; color: var(--gold); flex-shrink: 0; opacity: 0.7;
+}
+
+.themes-footer {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic; font-size: 0.68rem; color: var(--faded);
+  text-align: center;
+  border-top: 1px solid var(--paper-dark);
+  padding-top: 16px; width: 100%;
+}
+
+/* ══════════════════════════════
+   TITLE PAGE SCREEN
+══════════════════════════════ */
+#screen-title {
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  gap: 0;
+  padding: 40px 32px 32px;
+}
+
+.title-page-top-rule {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; margin-bottom: 28px;
+}
+.title-page-top-rule::before,
+.title-page-top-rule::after {
+  content: ''; flex: 1; height: 1px; background: var(--ink); opacity: 0.15;
+}
+.title-page-top-ornament {
+  font-family: 'IM Fell English', serif;
+  font-size: 0.65rem; letter-spacing: 0.2em;
+  color: var(--faded); text-transform: uppercase;
+}
+
+.title-page-series {
+  font-family: 'IM Fell English', serif;
+  font-size: 0.68rem; letter-spacing: 0.18em;
+  color: var(--gold); text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.title-page-emoji {
+  font-size: 4rem; line-height: 1;
+  margin-bottom: 20px;
+  animation: gentleFloat 4s ease-in-out infinite;
+}
+@keyframes gentleFloat {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+.title-page-title {
+  font-family: 'IM Fell English', serif;
+  font-size: clamp(1.8rem, 7vw, 2.6rem);
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.title-page-subtitle {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--faded);
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.title-divider {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; margin-bottom: 28px;
+}
+.title-divider::before, .title-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--gold); opacity: 0.4;
+}
+.title-divider-ornament {
+  font-family: 'IM Fell English', serif;
+  font-size: 1rem; color: var(--gold); opacity: 0.7;
+}
+
+.title-page-meta {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic; font-size: 0.7rem; color: var(--faded);
+  margin-bottom: 36px; line-height: 1.8;
+}
+
+.begin-btn {
+  padding: 14px 40px;
+  background: var(--ink);
+  border: none; border-radius: 1px;
+  font-family: 'IM Fell English', serif;
+  font-size: 1rem; letter-spacing: 0.06em;
+  color: var(--paper); cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 3px 3px 0 var(--paper-dark);
+}
+.begin-btn:hover {
+  background: var(--ink-light);
+  box-shadow: 4px 4px 0 var(--paper-dark);
+  transform: translateY(-1px);
+}
+.begin-btn:active { transform: scale(0.98); }
+
+/* ══════════════════════════════
+   STORY PAGE SCREEN
+══════════════════════════════ */
+#screen-story {
+  padding-top: 20px;
+  gap: 0;
+}
+
+.story-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--paper-dark);
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.story-running-title {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic; font-size: 0.7rem; color: var(--faded);
+  letter-spacing: 0.04em;
+}
+
+.story-page-num {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.7rem; color: var(--faded);
+}
+
+/* The actual story text */
+.story-body {
+  flex: 1;
+  font-family: 'Libre Baskerville', serif;
+  font-size: clamp(1rem, 3.5vw, 1.08rem);
+  line-height: 2;
+  color: var(--ink);
+  text-align: justify;
+  hyphens: auto;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding-bottom: 16px;
+}
+.story-body::-webkit-scrollbar { display: none; }
+
+/* Drop cap */
+.story-body .drop-cap {
+  float: left;
+  font-family: 'IM Fell English', serif;
+  font-size: 4.2em;
+  line-height: 0.72;
+  padding-right: 5px;
+  padding-top: 8px;
+  color: var(--red);
+}
+
+/* Divider between text and choices */
+.story-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 18px 0 16px; flex-shrink: 0;
+}
+.story-divider::before, .story-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--ink); opacity: 0.12;
+}
+.story-divider-mark {
+  font-family: 'IM Fell English', serif;
+  font-size: 0.75rem; color: var(--faded);
+}
+
+/* Choices */
+.choices {
+  display: flex; flex-direction: column; gap: 10px;
+  flex-shrink: 0; padding-bottom: 20px;
+}
+
+.choice-btn {
+  width: 100%; padding: 13px 16px;
+  background: white;
+  border: 1px solid var(--paper-dark);
+  border-radius: 1px;
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  display: flex; align-items: center; gap: 12px;
+  transition: all 0.15s;
+  box-shadow: 1px 1px 0 var(--paper-dark);
+  -webkit-tap-highlight-color: transparent;
+}
+.choice-btn:hover, .choice-btn:focus {
+  border-color: var(--gold);
+  background: #fffdf5;
+  box-shadow: 2px 2px 0 var(--gold-light);
+  outline: none;
+}
+.choice-btn:active { transform: scale(0.99); }
+
+.choice-mark {
+  font-family: 'IM Fell English', serif;
+  font-size: 0.9rem; color: var(--gold); flex-shrink: 0;
+  font-style: normal;
+}
+
+.next-btn {
+  width: 100%; padding: 14px 16px;
+  background: var(--ink);
+  border: none; border-radius: 1px;
+  font-family: 'IM Fell English', serif;
+  font-size: 0.95rem; letter-spacing: 0.05em;
+  color: var(--paper); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all 0.15s;
+  box-shadow: 3px 3px 0 var(--paper-dark);
+  -webkit-tap-highlight-color: transparent;
+}
+.next-btn:hover { background: var(--ink-light); transform: translateY(-1px); }
+.next-btn:active { transform: scale(0.99); }
+
+/* Loading */
+.loading-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.loading-dots { display: flex; gap: 8px; }
+.loading-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold);
+  animation: ldot 0.9s ease-in-out infinite;
+}
+.loading-dot:nth-child(2) { animation-delay: 0.18s; }
+.loading-dot:nth-child(3) { animation-delay: 0.36s; }
+@keyframes ldot {
+  0%,100% { transform: translateY(0); opacity: 0.3; }
+  50%      { transform: translateY(-8px); opacity: 1; }
+}
+.loading-text {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic; font-size: 0.82rem; color: var(--faded);
+}
+
+/* ── THE END ── */
+.the-end-wrap {
+  text-align: center; padding: 20px 10px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.the-end-ornament { font-size: 2.6rem; margin-bottom: 12px; }
+.the-end-title {
+  font-family: 'IM Fell English', serif;
+  font-size: 2rem; color: var(--ink); margin-bottom: 6px;
+}
+.the-end-rule {
+  width: 50px; height: 1px; background: var(--gold); opacity: 0.5;
+  margin: 10px auto 12px;
+}
+.the-end-sub {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic; font-size: 0.78rem; color: var(--faded); margin-bottom: 24px;
+}
+.restart-btn {
+  padding: 12px 32px;
+  background: var(--ink); border: none; border-radius: 1px;
+  font-family: 'IM Fell English', serif; font-size: 0.95rem;
+  color: var(--paper); cursor: pointer;
+  box-shadow: 3px 3px 0 var(--paper-dark);
+  transition: all 0.15s;
+}
+.restart-btn:hover { background: var(--ink-light); transform: translateY(-1px); }
+
+/* ── BACK LINK ── */
+.back-link-wrap { flex-shrink: 0; padding: 14px 0 4px; }
+.back-link {
+  font-family: 'Libre Baskerville', serif;
+  font-style: italic; font-size: 0.72rem; color: var(--faded);
+  background: none; border: none; cursor: pointer; padding: 0;
+  text-decoration: underline; text-decoration-color: rgba(140,122,96,0.3);
+  -webkit-tap-highlight-color: transparent;
+}
+.back-link:hover { color: var(--ink-light); }
+
+/* ══════════════════════════════
+   PAGE TURN
+══════════════════════════════ */
+.page-turn-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  pointer-events: none; display: none;
+}
+.page-turn-overlay.active { display: block; }
+.turning-page {
+  position: fixed; top: 0; bottom: 0; left: 50%; width: 50%;
+  transform-origin: left center;
+  background: var(--paper);
+  background-image: repeating-linear-gradient(
+    180deg, transparent 0px, transparent 30px,
+    rgba(28,18,8,0.04) 30px, rgba(28,18,8,0.04) 31px
+  );
+  animation: turnPage 0.6s cubic-bezier(0.645,0.045,0.355,1) forwards;
+  box-shadow: 4px 0 16px rgba(0,0,0,0.18);
+}
+@keyframes turnPage {
+  0%   { transform: rotateY(0deg); }
+  100% { transform: rotateY(180deg); opacity: 0; }
+}
+
+/* ══════════════════════════════
+   API SETUP MODAL
+══════════════════════════════ */
+#api-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(28,18,8,0.6); backdrop-filter: blur(4px);
+  z-index: 500; align-items: center; justify-content: center; padding: 20px;
+}
+#api-modal.open { display: flex; }
+.api-card {
+  background: var(--paper); max-width: 380px; width: 100%;
+  padding: 28px 24px;
+  box-shadow: 6px 6px 0 var(--paper-dark), 0 20px 50px rgba(0,0,0,0.35);
+  border: 1px solid var(--paper-dark);
+}
+.api-card-title {
+  font-family: 'IM Fell English', serif; font-size: 1.3rem;
+  color: var(--ink); margin-bottom: 10px;
+}
+.api-card-body {
+  font-family: 'Libre Baskerville', serif; font-style: italic;
+  font-size: 0.78rem; color: var(--faded); line-height: 1.75; margin-bottom: 18px;
+}
+.api-card-body a { color: var(--gold); }
+.api-input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--paper-dark); border-radius: 1px;
+  font-family: 'Libre Baskerville', serif; font-size: 0.82rem;
+  color: var(--ink); background: white; margin-bottom: 12px; outline: none;
+}
+.api-input:focus { border-color: var(--gold); }
+.api-save {
+  width: 100%; padding: 11px;
+  background: var(--ink); border: none;
+  font-family: 'IM Fell English', serif; font-size: 0.95rem;
+  color: var(--paper); cursor: pointer;
+  box-shadow: 2px 2px 0 var(--paper-dark);
+}
+.api-save:hover { background: var(--ink-light); }
+.api-skip {
+  width: 100%; padding: 8px; background: none; border: none;
+  font-family: 'Libre Baskerville', serif; font-style: italic;
+  font-size: 0.74rem; color: var(--faded); cursor: pointer; margin-top: 6px;
+}
+</style>
+</head>
+<body>
+
+<div class="book-shell">
+
+  <!-- ══ SCREEN: THEME SELECTION ══ -->
+  <div class="screen active" id="screen-themes">
+    <div class="themes-header">
+      <div class="themes-header-rule">
+        <span class="themes-series">A Collection of Stories</span>
+      </div>
+      <div class="themes-main-title">Storybook Adventures</div>
+      <div class="themes-subtitle">Choose your adventure and begin the journey</div>
+    </div>
+
+    <div class="choose-prompt">Which story shall we read?</div>
+
+    <div class="theme-list">
+      <button class="theme-btn" id="btn-fairy">
+        <span class="theme-btn-emoji">🧚</span>
+        <div class="theme-btn-text">
+          <div class="theme-btn-title">The Fairy Forest</div>
+          <div class="theme-btn-sub">A story of magic and friendship</div>
+        </div>
+        <span class="theme-btn-arrow">›</span>
+      </button>
+      <button class="theme-btn" id="btn-sea">
+        <span class="theme-btn-emoji">🌊</span>
+        <div class="theme-btn-text">
+          <div class="theme-btn-title">Under the Sea</div>
+          <div class="theme-btn-sub">A story of treasure and kindness</div>
+        </div>
+        <span class="theme-btn-arrow">›</span>
+      </button>
+    </div>
+
+    <div class="themes-footer">
+      Stories change every time · Powered by AI
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: TITLE PAGE ══ -->
+  <div class="screen" id="screen-title">
+    <div class="title-page-top-rule">
+      <span class="title-page-top-ornament">✦ &nbsp; A Story &nbsp; ✦</span>
+    </div>
+    <div class="title-page-series" id="title-series">Storybook Adventures</div>
+    <div class="title-page-emoji" id="title-emoji">🧚</div>
+    <div class="title-page-title" id="title-name">The Fairy Forest</div>
+    <div class="title-divider"><span class="title-divider-ornament">❧</span></div>
+    <div class="title-page-subtitle" id="title-subtitle">A story of magic, kindness and friendship</div>
+    <div class="title-page-meta">For young readers everywhere</div>
+    <button class="begin-btn" id="begin-btn">Begin Reading</button>
+    <div class="back-link-wrap" style="margin-top:20px;">
+      <button class="back-link" id="title-back-btn">← Choose a different story</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: STORY ══ -->
+  <div class="screen" id="screen-story">
+    <div class="story-header">
+      <span class="story-running-title" id="story-running-title">The Fairy Forest</span>
+      <span class="story-page-num" id="story-page-num">Page 1</span>
+    </div>
+    <div class="story-body" id="story-body">
+      <!-- filled by JS -->
+    </div>
+    <div class="story-divider" id="story-divider" style="display:none;">
+      <span class="story-divider-mark">❧</span>
+    </div>
+    <div class="choices" id="choices">
+      <!-- filled by JS -->
+    </div>
+    <div class="back-link-wrap">
+      <button class="back-link" id="story-back-btn">← Choose a different story</button>
+    </div>
+  </div>
+
+</div><!-- /book-shell -->
+
+<!-- Page turn overlay -->
+<div class="page-turn-overlay" id="page-turn">
+  <div class="turning-page"></div>
+</div>
+
+<!-- API key modal -->
+<div id="api-modal">
+  <div class="api-card">
+    <div class="api-card-title">Add your AI key</div>
+    <div class="api-card-body">
+      To get a unique story every time, you'll need a free Google Gemini API key.<br><br>
+      Visit <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> → Get API key → Create API key. It's completely free!<br><br>
+      Your key is saved only on this device.
+    </div>
+    <input class="api-input" id="api-key-input" type="password" placeholder="Paste your API key here…" />
+    <button class="api-save" id="api-save-btn">Save &amp; Start Reading</button>
+    <button class="api-skip" id="api-skip-btn">Use the built-in story instead</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════
+   STATE
+═══════════════════════════════════ */
+let currentTheme  = 'fairy';
+let currentPage   = 0;
+let storyHistory  = [];
+let geminiKey     = localStorage.getItem('sb_gemini_key') || '';
+let useAI         = !!geminiKey;
+
+/* ═══════════════════════════════════
+   THEME CONFIG
+═══════════════════════════════════ */
+const THEMES = {
+  fairy: {
+    name:     'The Fairy Forest',
+    emoji:    '🧚',
+    subtitle: 'A story of magic, kindness and friendship',
+    prompt: `You are a children's story writer for 6-year-olds. Write a magical fairy forest adventure.
+
+RULES:
+1. Each page: 3–5 short simple sentences. Use only words a 6-year-old knows.
+2. Stories are happy, kind, and always end well.
+3. Total story: 4–6 pages then a happy ending.
+4. Only give choices when the child faces a real decision (a fork, a mystery, a character needing help). Choices must follow naturally from the scene.
+5. If the story just needs to flow on, use needsChoice: false.
+6. Choices must be very short and simple — no more than 6 words each.
+7. When the story reaches its happy end, set isEnding: true.
+8. Reply ONLY with valid JSON. No markdown. No extra text.
+
+Formats:
+{"text":"...","needsChoice":true,"choices":["Short option","Short option"],"isEnding":false}
+{"text":"...","needsChoice":false,"isEnding":false}
+{"text":"...","needsChoice":false,"isEnding":true,"endingEmoji":"✨"}`
+  },
+  sea: {
+    name:     'Under the Sea',
+    emoji:    '🌊',
+    subtitle: 'A story of friendship, treasure and the deep blue sea',
+    prompt: `You are a children's story writer for 6-year-olds. Write an underwater ocean adventure.
+
+RULES:
+1. Each page: 3–5 short simple sentences. Use only words a 6-year-old knows.
+2. Stories are happy, kind, and always end well.
+3. Total story: 4–6 pages then a happy ending.
+4. Only give choices when the child faces a real decision (a discovery, a new place, a creature needing help). Choices must follow naturally from the scene.
+5. If the story just needs to flow on, use needsChoice: false.
+6. Choices must be very short and simple — no more than 6 words each.
+7. When the story reaches its happy end, set isEnding: true.
+8. Reply ONLY with valid JSON. No markdown. No extra text.
+
+Formats:
+{"text":"...","needsChoice":true,"choices":["Short option","Short option"],"isEnding":false}
+{"text":"...","needsChoice":false,"isEnding":false}
+{"text":"...","needsChoice":false,"isEnding":true,"endingEmoji":"🌊"}`
+  }
+};
+
+/* ═══════════════════════════════════
+   FALLBACK STORIES
+═══════════════════════════════════ */
+const FALLBACK = {
+  fairy: [
+    { text: "Deep in the Fairy Forest lived a tiny fairy named Blossom. One morning she woke up and gasped — her magical glowing flower had gone dark! All the animals used its warm light to find their way home at night. Without it, they would be lost in the dark. Blossom had to find the light and bring it back.", needsChoice: true, choices: ["Follow the stream", "Ask the old owl"], isEnding: false },
+    { text: "The old owl blinked his golden eyes and smiled. \"I saw the light float up to the Rainbow Pool,\" he said in his deep warm voice. He gave Blossom a tiny pink lantern to guide her way. She thanked him with a little curtsy and set off at once.", needsChoice: false, isEnding: false },
+    { text: "The path wound through a meadow full of tall flowers. Then Blossom heard a small sad sound. Under a daisy sat a little bunny, crying softly. \"I can't find my way home,\" he sniffled. Blossom looked at him, then at the long path ahead.", needsChoice: true, choices: ["Take the bunny along", "Help him home first"], isEnding: false },
+    { text: "Together they climbed the hill, hand in paw. At the top they stopped and stared. The Rainbow Pool shimmered with every colour you could think of. And there at the bottom, glowing softly, was Blossom's magical flower.", needsChoice: false, isEnding: false },
+    { text: "Blossom reached in and lifted the flower gently. It blazed with golden light, brighter than ever before! All across the forest the animals cheered. The bunny found his mum at the edge of the meadow and ran to her with a happy squeal. The whole Fairy Forest glowed with warmth and joy.", needsChoice: false, isEnding: true, endingEmoji: "✨" }
+  ],
+  sea: [
+    { text: "Far beneath the waves lived a cheerful little fish named Finn. One morning he found something amazing tucked behind a rock — an old wooden chest covered in shells and sea flowers. Finn swam closer. It was far too heavy to open alone.", needsChoice: true, choices: ["Ask Clara the crab", "Find the dolphins"], isEnding: false },
+    { text: "Clara the crab scuttled over, claws clacking with excitement. \"A treasure chest!\" she cried. Together they pushed and pulled with all their might. But the lid would not budge. Then a friendly octopus floated over with a big smile.", needsChoice: false, isEnding: false },
+    { text: "\"Would you like a hand?\" laughed the octopus. \"I have eight of them!\" All three friends pushed together. With a great WHOOSH the lid burst open. Warm golden light poured out through the water. Every fish nearby came to look.", needsChoice: true, choices: ["Look inside", "Swim in the golden light"], isEnding: false },
+    { text: "Inside lay hundreds of tiny glowing pearls. Finn smiled at his friends and at all the creatures who had gathered round. \"There are enough for everyone,\" he said. He swam through the water and gave every creature a pearl of their very own.", needsChoice: false, isEnding: false },
+    { text: "That evening the whole ocean floor twinkled and glowed. The seahorses did a slow swirling dance. The jellyfish pulsed pink and purple and blue. Finn floated up to the very top of the sea and looked down at his glowing friends far below. He had never felt so happy in all his life.", needsChoice: false, isEnding: true, endingEmoji: "🌊" }
+  ]
+};
+
+/* ═══════════════════════════════════
+   SCREEN SWITCHING
+═══════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+/* ═══════════════════════════════════
+   WIRE UP BUTTONS  (no inline onclick)
+═══════════════════════════════════ */
+document.getElementById('btn-fairy').addEventListener('click', () => openBook('fairy'));
+document.getElementById('btn-sea').addEventListener('click',   () => openBook('sea'));
+document.getElementById('begin-btn').addEventListener('click',  () => beginStory());
+document.getElementById('title-back-btn').addEventListener('click', () => showScreen('screen-themes'));
+document.getElementById('story-back-btn').addEventListener('click', () => showScreen('screen-themes'));
+document.getElementById('api-save-btn').addEventListener('click',   saveApiKey);
+document.getElementById('api-skip-btn').addEventListener('click',   skipApiKey);
+
+/* ═══════════════════════════════════
+   OPEN BOOK  → show title page
+═══════════════════════════════════ */
+function openBook(theme) {
+  currentTheme = theme;
+  currentPage  = 0;
+  storyHistory = [];
+
+  const t = THEMES[theme];
+  document.getElementById('title-emoji').textContent    = t.emoji;
+  document.getElementById('title-name').textContent     = t.name;
+  document.getElementById('title-subtitle').textContent = t.subtitle;
+
+  showScreen('screen-title');
+}
+
+/* ═══════════════════════════════════
+   BEGIN STORY
+═══════════════════════════════════ */
+function beginStory() {
+  if (!geminiKey) {
+    document.getElementById('api-modal').classList.add('open');
+  } else {
+    loadFirstPage();
+  }
+}
+
+/* ═══════════════════════════════════
+   API KEY
+═══════════════════════════════════ */
+function saveApiKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k) return;
+  geminiKey = k;
+  localStorage.setItem('sb_gemini_key', k);
+  useAI = true;
+  document.getElementById('api-modal').classList.remove('open');
+  loadFirstPage();
+}
+
+function skipApiKey() {
+  useAI = false;
+  document.getElementById('api-modal').classList.remove('open');
+  loadFirstPage();
+}
+
+/* ═══════════════════════════════════
+   GENERATE PAGE via Gemini
+═══════════════════════════════════ */
+async function generatePage(choiceMade) {
+  if (!useAI) return getFallback();
+
+  const theme  = THEMES[currentTheme];
+  const isFirst = storyHistory.length === 0;
+  const isLast  = storyHistory.length >= 4;
+
+  let userMsg = isFirst
+    ? `Start a new ${theme.name} adventure. Write page 1 — draw the child in right away!`
+    : isLast
+    ? `The child chose: "${choiceMade}". Write the final happy ending. Set isEnding to true.`
+    : `The child chose: "${choiceMade}". Continue the story from where it left off.`;
+
+  const histCtx = storyHistory.length
+    ? '\n\nStory so far:\n' + storyHistory.map((p,i)=>`Page ${i+1}: ${p.text}`).join('\n')
+    : '';
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: theme.prompt + histCtx + '\n\n' + userMsg }] }],
+          generationConfig: { temperature: 0.82, maxOutputTokens: 1024 }
+        })
+      }
+    );
+    if (!res.ok) throw new Error('API ' + res.status);
+    const data  = await res.json();
+    const raw   = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  } catch(e) {
+    console.warn('Gemini failed, using fallback:', e);
+    return getFallback();
+  }
+}
+
+function getFallback() {
+  const fb  = FALLBACK[currentTheme];
+  return fb[Math.min(currentPage, fb.length - 1)];
+}
+
+/* ═══════════════════════════════════
+   LOAD / ADVANCE
+═══════════════════════════════════ */
+async function loadFirstPage() {
+  showScreen('screen-story');
+  showLoading();
+  const page = await generatePage(null);
+  storyHistory.push(page);
+  renderPage(page);
+}
+
+// Called with a choice string OR null (for "next")
+async function advance(choice) {
+  await pageTurnAnim();
+  showLoading();
+  currentPage++;
+  document.getElementById('story-page-num').textContent = 'Page ' + (currentPage + 1);
+  const page = await generatePage(choice);
+  storyHistory.push(page);
+  renderPage(page);
+}
+
+/* ═══════════════════════════════════
+   SHOW LOADING
+═══════════════════════════════════ */
+function showLoading() {
+  document.getElementById('story-body').innerHTML = `
+    <div class="loading-wrap">
+      <div class="loading-dots">
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+      </div>
+      <div class="loading-text">Turning the page…</div>
+    </div>`;
+  document.getElementById('choices').innerHTML = '';
+  document.getElementById('story-divider').style.display = 'none';
+}
+
+/* ═══════════════════════════════════
+   RENDER PAGE
+═══════════════════════════════════ */
+function renderPage(page) {
+  const t = THEMES[currentTheme];
+  document.getElementById('story-running-title').textContent = t.name;
+  document.getElementById('story-page-num').textContent = 'Page ' + (currentPage + 1);
+
+  // Drop cap on first letter
+  const text      = page.text.trim();
+  const firstChar = text.charAt(0);
+  const rest      = text.slice(1);
+
+  document.getElementById('story-body').innerHTML =
+    `<span class="drop-cap">${firstChar}</span>${rest}`;
+
+  const divider = document.getElementById('story-divider');
+  const choices = document.getElementById('choices');
+
+  if (page.isEnding) {
+    divider.style.display = 'flex';
+    choices.innerHTML = `
+      <div class="the-end-wrap">
+        <div class="the-end-ornament">${page.endingEmoji || '✨'}</div>
+        <div class="the-end-title">The End</div>
+        <div class="the-end-rule"></div>
+        <div class="the-end-sub">What a wonderful adventure!</div>
+        <button class="restart-btn" id="restart-btn">Read another story</button>
+      </div>`;
+    document.getElementById('restart-btn').addEventListener('click', () => showScreen('screen-themes'));
+
+  } else if (page.needsChoice && page.choices && page.choices.length) {
+    divider.style.display = 'flex';
+    choices.innerHTML = '';
+    const marks = ['❧', '✦', '❦'];
+    page.choices.forEach((c, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.innerHTML = `<span class="choice-mark">${marks[i % marks.length]}</span> ${c}`;
+      btn.addEventListener('click', () => advance(c));
+      choices.appendChild(btn);
+    });
+
+  } else {
+    divider.style.display = 'flex';
+    choices.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.className = 'next-btn';
+    btn.textContent = 'Continue the story →';
+    btn.addEventListener('click', () => advance(null));
+    choices.appendChild(btn);
+  }
+}
+
+/* ═══════════════════════════════════
+   PAGE TURN ANIMATION
+═══════════════════════════════════ */
+function pageTurnAnim() {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('page-turn');
+    const pg      = overlay.querySelector('.turning-page');
+    pg.style.animation = 'none';
+    pg.offsetHeight;
+    pg.style.animation = '';
+    overlay.classList.add('active');
+    setTimeout(() => { overlay.classList.remove('active'); resolve(); }, 650);
+  });
+}
+</script>
+
+</body>
+</html>
